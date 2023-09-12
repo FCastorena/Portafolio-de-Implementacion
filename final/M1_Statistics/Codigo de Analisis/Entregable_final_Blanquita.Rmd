@@ -1,0 +1,583 @@
+---
+title: "Entregable 2, Blanquita"
+author: "Francisco Castorena, A00827756"
+date: "2023-08-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Exploración y limpieza de la base de datos
+```{r}
+df = read.csv('precios_autos.csv')
+```
+
+```{r}
+# Observamos dimensiones de la base de datos
+dim(df)
+```
+La base de datos tiene 205 observaciones y 21 columnas.
+
+```{r}
+# Observamos el tipo de dato que se tiene para cada una de las columnas en nuestro dataset
+sapply(df, class)
+```
+Observamos que muchas de las variables son categóricas con valores numéricos, al analizar la base de datos se puede observar que la variable 'cylindernumber' tiene valores en cadenas de texto, pasaremos a valores numéricos. (No es necesario por el momento hacer este cambio, sin embargo prefiero ver los números a sus nombres en inglés).
+
+```{r}
+# Convirtiendo variable de texto categóricas a numéricas categóricas
+cylinder_levels <- c("one","two","three","four", "five","six","seven","eight","twelve")
+cylinder_numbers <- c(1,2,3,4,5,6,7,8,12)
+
+# Convert the column to a factor with the defined levels
+df$cylindernumber <- factor(df$cylindernumber, levels = cylinder_levels)
+
+# Map the factor levels to their corresponding numbers
+df$cylindernumber <- cylinder_numbers[as.integer(df$cylindernumber)]
+
+# Transformamos las columnas symboling y cylindernumber a variables categóricas, para que no sean interpretadas como una columna de números enteros
+df$symboling <- factor(df$symboling)
+df$cylindernumber <- factor(df$cylindernumber)
+```
+
+Buscamos valores nulos dentro del dataset.
+```{r}
+colSums(is.na(df))
+```
+No se tienen valores nulos en el dataset.
+
+### Analizamos distribución de los datos para cada variable numérica
+```{r, out.width="50%", out.height="50%"}
+# Filter out non-numeric columns
+numeric_cols <- sapply(df, is.numeric)
+numeric_df <- df[, numeric_cols]
+
+#adjust plot margins
+#par(mar = c(0.5,0.5,0.5,0.5))
+library(Hmisc)
+for (col_name in names(numeric_df)) {
+  X1 = numeric_df[[col_name]]
+  title_ = paste('Histogram of ',col_name)
+  hist(X1,prob=TRUE,col=0,main=title_)
+  x=seq(min(X1),max(X1),0.1)
+  y=dnorm(x,mean(X1),sd(X1))
+  lines(x,y,col="red")
+}
+```
+
+Podemos observar como existen distintas variables que parecen seguir una distribución normal, como lo podrían ser 'carlength', 'carwidth', 'curbweight' entre otras. También existen variables con sesgo como por ejemplo 'price', 'horsepower' o 'compressionratio'.
+
+
+### Medidas estadísticas apropiadas para las variables cuantitativas (media, desviación estándar, cuantiles, etc)
+
+```{r}
+quantitative_vars <- c("wheelbase", "carlength", "carwidth", "carheight", "curbweight", "enginesize", "stroke", "compressionratio", "horsepower", "peakrpm", "citympg", "highwaympg", "price") 
+
+for (col_name in quantitative_vars) {
+  X1 = df[[col_name]]
+  print(col_name)
+  print(summary(X1))
+  cat("\n")
+}
+
+```
+Podemos ver a primera instancia que los datos mínimos y máximos en muchas variables no distan demasiado, sobre todo en aquellas variables que describen las dimensiones de los carros, lo cual es algo esperado debido a la naturaleza de los datos, se entiende que muchas de las variables descriptivas se comporten de manera "normal", ya que todo carro por distinto que sea el precio, tamaño, motor etc. debe de cumplir con ciertas normas y lineamientos para poder transitar de forma correcta.
+
+
+#### Medidas estadísticas apropiadas para las variables cualitativas (cuantiles, frecuencias).
+No se va a tener en cuenta a la variable "CarName" para el análisis de frecuencias y proporciones, debido a que son demasiados valores categóricos como para poder tener un análisis claro por tipo de valor.
+```{r}
+
+qualitative_vars <- c("symboling","fueltype","carbody","drivewheel","enginelocation","enginetype","cylindernumber")
+
+for (col_name in qualitative_vars) {
+  # Cálculo de medidas estadísticas
+  X1 = df[[col_name]]
+  frecuencias <- table(X1)
+  proporciones <- prop.table(frecuencias)
+  cuantiles <- quantile(as.numeric(factor(X1)), probs = c(0.25, 0.5, 0.75))
+  
+  # Imprimir resultados
+  cat("\n")
+  cat("Frecuencias de ", col_name,":\n")
+  print(frecuencias)
+  cat("\n")
+  cat("Proporciones de ", col_name,":\n")
+  print(proporciones)
+  cat("\n")
+  cat("Cuantiles de ", col_name,":\n")
+  print(cuantiles)
+  cat("\n")
+
+}
+
+```
+
+### Boxplots para variables cuantitativas
+```{r, out.width="50%", out.height="50%"}
+for (col_name in quantitative_vars){
+  X = df[[col_name]]
+  q1=quantile(X,0.25)  #Cuantil 1 de la variable X
+  q3=quantile(X,0.75)
+  ri= q3-q1   #Rango intercuartílico de X
+  par(mfrow=c(2,1)) #Matriz de gráficos de 2x1
+  y1 = q1-1.5*ri
+  y2 = q3+1.5*ri
+  boxplot(X,horizontal=TRUE,ylim=c(y1,y2),main=col_name)
+  abline(v=q3+1.5*ri,col="red")  #linea vertical en el límite de los datos atípicos o extremos
+}
+
+```
+
+Con los boxplots generados para las variables cuantitativas podemos observar como el grupo del cuantil 2 y el grupo del cuantil 3 son más pequeños que los de los demás cuantiles, lo cual indica que hay una menor variación de los datos en estos cuantiles, y va de acorde a la distribución normal, los datos suelen estar mayormente distribuidos cerca de la mediana en este caso, por otra parte podemos ver que hay muy pocos outliers, esto como se explicó anteriormente puede ser debido a la naturaleza de los datos que se están analizando, no puedes cambiar mucho ciertas características de estos para que sigan siendo útiles.
+
+
+### Analisis de correlación y diagramas de dispersión
+
+Debido a la cantidad de variables dentro del dataframe, el mostrar una matriz de correlación o de diagramas de dispersión podía ser engorroso y no verse bien, por lo que seleccionamos solo algunas deseguid las variables para desplegar en la gráfica, de igual forma, la matriz númerica de correlaciones completa se encuentra en la variable corr_mat
+```{r, out.width="50%", out.height="50%"}
+library(ggplot2)
+
+selected_columns <- c(1, 3, 4, 6, 9, 10)
+subset_df <- numeric_df[, selected_columns]
+
+cor_matrix <- cor(subset_df)
+
+cor_data <- as.data.frame(as.table(cor_matrix))
+colnames(cor_data) <- c("Var1", "Var2", "Correlation")
+
+# Create a correlation heatmap using ggplot2
+ggplot(data = cor_data, aes(x = Var1, y = Var2, fill = Correlation)) +
+  geom_tile() +
+  theme_minimal() +
+  labs(title = "Correlation Heatmap for Selected Columns")
+```
+
+A continuación se muestran las diez correlaciones mayores que se tienen para nuestro dataframe numérico (excluyendo la diagnoal principal), debido a que por las dimensiones de la matriz identificar estos valores a vista puede ser dificil.
+
+Esta parte de código se realizó con ayuda de ChatGPT.
+```{r}
+# Replace these with your actual correlation matrix and variable names
+cor_matrix <- cor(numeric_df)
+variable_names <- colnames(numeric_df)
+
+# Set the diagonal values to NA to exclude them
+diag(cor_matrix) <- NA
+
+# Flatten the upper triangle of the correlation matrix
+cor_flat <- cor_matrix[upper.tri(cor_matrix, diag = TRUE)]
+
+# Order the correlations in descending order
+sorted_cor <- sort(cor_flat, decreasing = TRUE)
+
+# Select the top 10 highest correlated pairs
+top_pairs <- head(sorted_cor, 20)
+
+# Get the indices of the top pairs
+top_indices <- order(cor_flat, decreasing = TRUE)[1:20]
+
+# Get the variable names for the top pairs
+variable_pairs <- expand.grid(Var1 = variable_names, Var2 = variable_names)
+top_variable_pairs <- variable_pairs[top_indices, ]
+
+# Print the top 10 highest correlated pairs along with their correlations
+result <- cbind(top_variable_pairs, Correlation = top_pairs)
+print(result)
+
+```
+
+De igual forma, a continuación se incluyen algunos diagramas de dispersión (no se incluyen todos por dimensiones de la matriz)
+```{r}
+# Select the first 5 variables from numeric_df
+selected_vars <- numeric_df[, 1:5]
+
+# Create the dispersion matrix plot
+pairs(selected_vars)
+```
+
+#### Analizamos por medio de gráficas, distribución de datos categóricos
+
+```{r}
+# Creamos dataset de variables categoricas
+qualitative_vars <- c("symboling","fueltype","carbody","drivewheel","enginelocation","enginetype")
+categorical_df <- df[, qualitative_vars]
+```
+
+Diagramas de barras
+```{r, out.width="50%", out.height="50%"}
+# Convert 'symboling' to a factor for categorical interpretation
+categorical_df$symboling <- factor(categorical_df$symboling)
+
+# Create a bar plot for 'symboling'
+bar_plot <- ggplot(categorical_df, aes(x = symboling, fill = symboling)) +
+  geom_bar() +
+  labs(title = "Bar Plot of 'symboling' Column")
+
+print(bar_plot)
+```
+
+```{r, out.width="50%", out.height="50%"}
+conteo <- table(categorical_df$fueltype)
+
+# Calcular el porcentaje
+porcentaje <- prop.table(conteo) * 100
+
+etiquetas <- paste(names(conteo), "(", conteo, ")", "\n", round(porcentaje, 2), "%")
+
+# Crear el pie chart con etiquetas y título
+pie(conteo, labels = etiquetas, main = "Distribución de tipos de combustible, variable fueltype")
+
+```
+
+```{r, out.width="50%", out.height="50%"}
+# Contar la frecuencia de cada categoría
+conteo <- table(categorical_df$carbody)
+
+# Calcular el porcentaje
+porcentaje <- prop.table(conteo) * 100
+
+# Crear etiquetas con número de ocurrencias y porcentaje
+etiquetas <- paste(names(conteo), "\n", "(", conteo, ")\n", round(porcentaje, 2), "%", sep = "")
+
+# Crear el pie chart con etiquetas y título
+pie(conteo, labels = etiquetas, main = "Distribución de tipos de carrocería, variable carbody", cex = 0.7)
+
+# Crear leyenda fuera del gráfico
+legend("topright", legend = etiquetas, fill = rainbow(length(conteo)), cex = 0.7)
+
+```
+
+```{r, out.width="50%", out.height="50%"}
+conteo <- table(categorical_df$drivewheel)
+
+# Calcular el porcentaje
+porcentaje <- prop.table(conteo) * 100
+
+etiquetas <- paste(names(conteo), "(", conteo, ")", "\n", round(porcentaje, 2), "%")
+
+# Crear el pie chart con etiquetas y título
+pie(conteo, labels = etiquetas, main = "Distribución por tipos de rueda, variable drivewheel")
+```
+
+```{r, out.width="50%", out.height="50%"}
+conteo <- table(categorical_df$enginelocation)
+
+# Calcular el porcentaje
+porcentaje <- prop.table(conteo) * 100
+
+etiquetas <- paste(names(conteo), "(", conteo, ")", "\n", round(porcentaje, 2), "%")
+
+# Crear el pie chart con etiquetas y título
+pie(conteo, labels = etiquetas, main = "Distribución por ubicación del motor, variable enginelocation")
+```
+
+```{r, out.width="50%", out.height="50%"}
+# Cargar la biblioteca ggplot2 si no está cargada
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+  library(ggplot2)
+}
+
+data <- data.frame(Categoria = categorical_df$enginetype)
+
+conteo <- table(data$Categoria)
+
+porcentaje <- prop.table(conteo) * 100
+
+data_etiquetas <- data.frame(Categoria = names(conteo), Porcentaje = porcentaje)
+
+ggplot(data, aes(x = Categoria, fill = Categoria)) +
+  geom_bar() +
+  geom_text(data = data_etiquetas, aes(label = paste(round(porcentaje, 2), "%"), y = porcentaje), vjust = -0.5, size = 3) +
+  labs(title = "Distribución por tipo de motor, variable enginetype", x = NULL, y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+
+```
+
+### Selección de nuestras 6 variables para el análisis de precio
+Para los sigiuentes estudios primeramente se escogerán 6 variables no categóricas, esto debido a que symboling no tiene una correlación alta con price, por otra parte considero que las otras variables categóricas no son especialmente valiosas para determinar el precio, (puede que algunas de estas si tengan un buen desempeño para ayudar a definir el precio, sin embargo considero que las variables continuas por si solas, son lo suficientemente significativas para definir un buen rango de precios de un automovil)
+
+Para las variables continuas escogeremos aquellas que tengan una alta correlación con la variable 'price' y una correlación entre ellas cercanas a 0, esto para evitar colinealidad, a continuación se muestra el método de selección de variables.
+
+Nos apoyaremos del análisis de componentes principales, así como de algunas gráficas que se obtienen a partir de este análisis para decidir las variables en las cuales se realizarán más estudios.
+
+Referencias para el análisis hecho con PCA:
+https://www.datacamp.com/tutorial/pca-analysis-r
+
+### Análisis de componentes principales para la selección de las variables numéricas
+```{r}
+data_normalized <- scale(numeric_df[,!names(numeric_df) %in% c("symboling")])
+```
+
+```{r, message=FALSE}
+library('corrr')
+library("ggcorrplot")
+library("FactoMineR")
+
+corr_matrix <- cor(data_normalized)
+ggcorrplot(corr_matrix)
+```
+
+```{r}
+data.pca <- princomp(corr_matrix)
+summary(data.pca)
+```
+
+```{r,message=FALSE}
+library(factoextra)
+
+#fviz_eig(data.pca, addlabels = TRUE)
+
+
+# Graph of the variables
+fviz_pca_var(data.pca, col.var = "black")
+```
+
+```{r}
+fviz_cos2(data.pca, choice = "var", axes = 1:2)
+```
+
+Se escogerán a las variables curbweight, highwaympg, horsepower,wheelbase, carheight, enginesize y la variable categórica symboling.
+
+#### Creación de dataset de variables seleccionadas
+```{r}
+# Creamos dataset de variables categoricas
+dummy <- c("symboling","curbweight","highwaympg","horsepower","wheelbase","carheight","enginesize","price")
+main_df <- df[, dummy]
+```
+
+```{r, out.width="50%", out.height="50%"}
+# Filter out non-numeric columns
+numeric_cols <- sapply(main_df, is.numeric)
+num_main_df <- main_df[, numeric_cols]
+for (col_name in names(num_main_df)) {
+  X1 = num_main_df[[col_name]]
+  title_ = paste('Histogram of ',col_name)
+  hist(X1,prob=TRUE,col=0,main=title_)
+  x=seq(min(X1),max(X1),0.1)
+  y=dnorm(x,mean(X1),sd(X1))
+  lines(x,y,col="red")
+}
+```
+
+#### Prueba de Anderson-Darling sobre normalidad de los datos originales
+Si el p-value no está por debajo de nuestro nivel de significancia 0.05, no tenemos suficiente evidencia para rechazar la hipótesis nula.
+
+hipotesis nula: los datos no siguen una distribución normal
+
+hipotesis alternativa: los datos siguen una distribución normal
+```{r}
+library(nortest)
+for (col_name in names(num_main_df)){
+  cat("\nPara la variable ", col_name)
+  print(ad.test(num_main_df[[col_name]]))
+  cat("\n")
+
+}
+```
+
+Podemos ver que para todas las variables escogidas, el p-value es menor a 0.05, por lo que podemos rechazar la hipótesis nula que dice que los datos no siguen una distribución normal, por lo que concluimos que todas las variables dentro de main_df siguen una distribución normal.
+
+#### Análisis de sesgo y curtosis de las variables
+Ahora realizaremos un análisis de sesgo y curtosis para las variables seleccionadas, con y sin transformación de estos, utilizaremos la transformación de box-cox en sobre estas variables para que, en caso de tener sesgos o curtosis grandes en los datos, buscar ajustarlos según sea necesario, en caso de que el sesgo sea poco o que la curtosis sea cercana a una curtosis mesocúrtica, no se cambiaran los datos de la variable respectiva a sus transformados.
+```{r, out.width="50%", out.height="50%"}
+library(moments)
+library(MASS)
+
+# Create an empty dataframe with the same number of rows as main_df
+transf_df <- data.frame(matrix(NA, nrow = nrow(num_main_df), ncol = ncol(num_main_df)))
+
+# Copy column names from main_df to transf_df
+colnames(transf_df) <- colnames(num_main_df)
+
+for (col_name in names(num_main_df)) {
+  cat('Resultados del análisis, variable ', col_name, " sin transformación \n")
+  cat('Sesgo: ', skewness(num_main_df[[col_name]]), "\n")
+  cat('Curtosis: ', kurtosis(num_main_df[[col_name]]), "\n")
+  cat('\n')
+  
+  # Compute the Box-Cox transformation and store it in transf_df
+  bc_result <- boxcox((num_main_df[[col_name]] + 3) ~ 1)
+  opt_lambda <- bc_result$x[which.max(bc_result$y)] 
+  dummy_exact <- ((num_main_df[[col_name]] + 1) ^ opt_lambda - 1) / opt_lambda
+  
+  # Add the transformed values to transf_df
+  transf_df[[col_name]] <- dummy_exact
+  
+  cat('Resultados del análisis, variable ', col_name, " con transformación \n")
+  cat('Sesgo: ', skewness(dummy_exact), "\n")
+  cat('Curtosis: ', kurtosis(dummy_exact), "\n")
+  cat('\n')
+}
+
+```
+
+Podemos ver una disminución en el sesgo y en la curtosis al realizar la transformación box-cox en  las variables, curbweight,  highwaympg, horsepower, wheelbase, carheight y enginesize, crearemos un dataset nuevo que tenga estas variables transformadas,la variable symboling debido a que es categórica permanecera sin cambios.
+
+```{r}
+transf_df$symboling <- main_df$symboling
+```
+
+Ahora procederemos a hacer nuestros estudios estadísticos para determinar la significancia de las distintas variables predictoras sobre la variable 'price'
+
+### ANOVA para estimar el cambio de 'price' de acuerdo a la variable categórica 'symboling'
+Hipótesis nula: No hay diferencia entre las medias de los grupos de las variables categóricas.
+Hipótesis alterna: Las medias por grupo son diferentes entre ellas.
+```{r}
+library(tidyverse)
+
+dat <- main_df %>%
+  select(symboling, price)
+
+summary(dat)
+
+```
+
+```{r, out.width="50%", out.height="50%"}
+library(ggplot2)
+
+ggplot(dat) +
+  aes(x = symboling, y = price, color = symboling) +
+  geom_jitter() +
+  theme(legend.position = "none")
+```
+
+Aquí podemos observar como no hay una clara diferencia de varianza en los precios dependiendo del tipo de valor categórico en la variable symboling, se ve como para todo tipo de valor categórico, los precios tienden a estar concentrados en un mismo precio (alrededor de 10000).
+
+```{r}
+res_aov <- aov(price ~ symboling,
+  data = dat
+)
+
+summary(res_aov)
+```
+
+Dado que el p-value es menor a 0.05, rechazamos la hipótesis nula, la cual nos dice que todas las medias de los grupos de symboling son iguales. Con lo cual podemos concluir que al menos la media de un grupo es significativamente diferente a otras en términos del precio.
+
+```{r}
+# Assuming your dataframe is named 'transf_df'
+# Calculate the means by symboling group
+means_by_symboling <- aggregate(main_df$price, by=list(Symboling=main_df$symboling), FUN=mean)
+
+# Rename the columns for clarity
+colnames(means_by_symboling) <- c("Symboling", "Mean_Price")
+
+# Display the result
+print(means_by_symboling)
+```
+
+Para identificar que grupos específicos son aquellos que tienen una diferencia significativa realizaremos la prueba de Tukey.
+
+```{r}
+TukeyHSD(res_aov, conf.level = .95)
+```
+
+Concluimos con un 95% de confianza que hay una diferencia significativa en la media del precio de automoviles entre los grupos (-1,1), (-1,2), (0,1), (1,3) y (2,3) de la variable symboling.
+
+### Análisis de regresión sobre variables numéricas transformadas (transf_df)
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ curbweight, data=transf_df)
+summary(linear_model)
+#plot(linear_model)
+# Plot abline plot
+plot(transf_df$curbweight, transf_df$price)
+abline(linear_model)
+```
+En el análisis de residuos podemos observar que la mediana es muy cercana a 0 lo cual nos dice que hay muy poco sesgo, podemos observar también que los residuos están simétricamente distribuidos lo cual también indica que no hay sesgo. Vemos que 81% de la varianza de 'price' puede ser explicada en esta regresión, el cual es un porcentaje alto.
+
+El estadístico F es de 911.2 lo cual es bueno, entre mayor sea este valor nos indica que el modelo es estadísticamente significante, también podemos observar el p-value que apoya la teoría de que este modelo es estadísticamente significante. 
+
+Con este modelo concluimos que la variable curbweight es estadísticamente significante para determinar el precio de automoviles de nuestra base de datos.
+
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ highwaympg, data=transf_df)
+summary(linear_model)
+# plot(linear_model)
+# Plot abline plot
+plot(transf_df$highwaympg, transf_df$price)
+abline(linear_model)
+```
+
+También podemos ver buenos resultados para el modelo lineal hecho con la variable highwaympg, la media de los residuos es cercana a 0 y estos se distribuyen de forma simétrica, el valor de F estadístico es alto y el p-value del modelo es bajo, lo cual indica que el modelo es estadísticamente significante, podemos interpretar en el contexto de los datos y con la gráfica de la regresión lineal, que a eficiencia de millas por galón, los precios suelen ser más bajos, esto tiene sentido considerando que aquellos autos con motores más grandes suelen tener más piezas, equipo, son más pesados, etc. Mientras que los motores pequeños que suelen ser los quue consumen menos gasolina, son más baratos.
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ horsepower, data=transf_df)
+summary(linear_model)
+# plot(linear_model)
+# Plot abline plot
+plot(transf_df$horsepower, transf_df$price)
+abline(linear_model)
+```
+
+El modelo cumple supuestos que lo hacene stadísticamente significativo, buenos valores para el análisis de residuos, un F estadístico alto y un p-value bajo, el 70% de la varianza de la variable price puede ser explicada con la regresión, vemos como a mayor cantidad de caballos de fuerza, mayor el precio, esto tiene sentido debido a que los motores que tienen más caballos de fuerza son más grandes, tienen más componentes, el auto tiene que tener componentes que se adapten al motor, etc. 
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ wheelbase, data=transf_df)
+summary(linear_model)
+# plot(linear_model)
+# Plot abline plot
+plot(transf_df$wheelbase, transf_df$price)
+abline(linear_model)
+```
+
+En esta variable vemos como aún y que se tengan buenas estimaciones de normalidad en el análisis de residuos y que el valor F estadístico sea relativamente alto, el modelo estima únicamente el 39% de la varianza de la variable price, aun y que este valor sea bajo, nos puede ayudar en una regresión lineal multiple al ser combinada con otras variables con las que no se tengan colinealidad.
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ carheight, data=transf_df)
+summary(linear_model)
+# plot(linear_model)
+# Plot abline plot
+plot(transf_df$carheight, transf_df$price)
+abline(linear_model)
+```
+
+En esta variable podemos observar como el F estadpistico y el p-value son altos comparandose con las previos modelos hechos con las variables analizadas, el valor ajustado de R cuadrado es muy pequeño, solo del 2%, aún y que el modelo explique muy poca de la varianza de price no se puede descartar que sea estadísticamente significativo debido a que el p-value es menor a 0.05
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ enginesize, data=transf_df)
+summary(linear_model)
+# plot(linear_model)
+# Plot abline plot
+plot(transf_df$enginesize, transf_df$price)
+abline(linear_model)
+```
+
+La interpretación y conclusiones para la variable enginesize, son muy parecidas a las definidas para la variable horsepower, ambos presentan un r-squared similar y en la gráfica de componentes principales se podía observar como existía una colinealidad entre ambas variables, aunque por separadas ambas sean de significancia para determinar el precio de un automovil, el juntarlas en un modelo multi lineal no asegura que el modelo vaya a explicar mucha nueva varianza de la que se tenía por separado, se podría considerar descartar una de estas variables de un modelo multi-lineal para evitar overfitting.
+
+### Análisis de modelo multi-lineal con variables numéricas transformadas (transf_df)
+
+
+```{r, out.width="50%", out.height="50%"}
+linear_model <- lm(price ~ enginesize + curbweight + highwaympg + horsepower + wheelbase + carheight, data=transf_df)
+summary(linear_model)
+plot(linear_model)
+
+#abline(linear_model)
+```
+```{r}
+step(linear_model,direction = "both",trace=1)
+```
+```{r}
+alfredo <- lm(formula = price ~ curbweight + horsepower, data = transf_df)
+summary(alfredo)
+```
+```{r, out.width="50%", out.height="50%"}
+plot(alfredo)
+```
+
+```{r}
+aldo <- influence.measures(alfredo)
+summary(aldo)
+```
+
+Podemos observar como la varianza explicada por el modelo es del 85%, se realizaron modelos lineales de una solo variable que tenian valores de r cuadrada ajustada similares a este modelo (como curbweight con cerca de 0.81), la poca varianza extra obtenida a pesar de tener distintas variables con un r-squared alto se puede deber a la colinealidad, los valores aún y que sean distintos de las variables tienden a comportarse de la misma forma cuando cambia la variable price, por lo que esto confirma como el tratar de hacer un modelo mejor solo arrojando más variables a este no es necesariamente cierto, tiene incluso sus desventajas, el modelo puede ser más pesado de procesar por la cantidad de datos y puede darse overfitting que parece no ser nuestro caso debido a que el multiple r-squared y el adjusted r-squared son muy similares.
+
+Este modelo es bueno, ya que explica el 85% de la varianza de la variable price, sin embargo pueden existir ciertos tratamientos de datos, como otro tipo de transformaciones, amputación de datos atípicos, combinación de variables que entran en el modelo, etc. que pueden crear mejores modelos, sin embargo vemos como cada una de las variables escogidas por si solas si son de significancia al momento de definir el valor de precio de un automovil de esta base de datos.
