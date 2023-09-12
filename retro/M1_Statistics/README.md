@@ -1,5 +1,5 @@
 # Archivos de estadística, finales
-En esta sección del repositorio se encuentran 4 carpetas, uno para cada una de las actividades de estadística correspondientes al portafolio de análisis.
+En esta sección del repositorio se encuentran 4 carpetas, uno para cada una de las actividades de estadística correspondientes al portafolio de implementación.
 
 Las carpetas que se encuentran en este apartado contienen los siguientes documentos:
 
