@@ -1,4 +1,6 @@
-# Demo file for the folder with the draft version of each deliverable
-In this file, you should describe the content of the folder. For example, in this case, we could state that:
+# Entregables con retroalimentación, módulos de ML y estadística
+En esta sección del repositorio se encuentran dos carpetas, cada una con los entregables con los cuales se obtuvo retroalimentación para los entregables finales de este repositorio, correspondientes al portafolio de implementación por módulo, de ML, y de estadística. 
 
-This folder contains a subfolder for each related module and the files that must be reviewed for each deliverable. Please refer to each subfolder for more details.
+- Carpeta M1_Statistics: Se encuentran los entregables  de estadística. (4 archivos)
+- Carpeta M2_ML: Se encuentran los entregables de ML. (2 Archivos)
+
