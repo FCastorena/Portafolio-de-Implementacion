@@ -1,23 +1,12 @@
-# Demo file for inner file
-In this file, you should describe the content of the folder. For example, in this case, we could state that:
+# Archivos de estadística, finales
+En esta sección del repositorio se encuentran 4 carpetas, uno para cada una de las actividades de estadística correspondientes al portafolio de análisis.
 
-## Files for revision
-This folder contains the files related to the deliverables from the Statistics module. The following files are to be graded: 
+Las carpetas que se encuentran en este apartado contienen los siguientes documentos:
 
- * **Evidence 01: Modeling ** Please review file **Ev_01/dummyFile.txt**
- 
-## Requested changes and replies
-Following is a list of the issues that were raised by the reviewer during the feedback phase, and the changes that we implemented for solving them.
+	* **Actividad 4. Intervalos de confianza** Revise el archivo **retro/M1_Statistics/Actividad 4/Tarea4_A00827756.pdf**
+	* **Actividad 5. Pruebas de hipótesis** Revise el archivo **retro/M1_Statistics/Actividad 5/Tarea5_A00827756.pdf**
+	* **Actividad 6. ANOVA** Revise el archivo **retro/M1_Statistics/Actividad 6/Tarea6_A00827756.pdf**
+	* **Actividad 7. Regresión lineal** Revise el archivo **retro/M1_Statistics/Actividad 7/Tarea7_A00827756.pdf**
 
-### Issue 01: You are still missing some tests
-We added some more testing varying the hyper-parameters in the following ranges: 
-* Theta: We used values 0.01, 0.001, and 0.005
-* ...
-
-These changes can be observerd in the following files: 
-* ...
-
-### Issue 02: ...
-...
 
 
