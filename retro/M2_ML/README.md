@@ -1,5 +1,5 @@
 # Archivos de retroalimentación de ML, portafolio de Análisis
-En esta sección se dividen los archivos de los cuales se obtuvo retroalimentación para finalmente llegar al modelo refinado.
+En esta sección se dividen los archivos de los cuales se obtuvo retroalimentación para el portafolio de Implementación.
 
 * 
 	* **Entregable 1: Template para uso de framework (scikit-learn)** Revise el archivo **retro/M2_ML/Ev_01/Entregable1.ipynb**
